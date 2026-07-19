@@ -1,46 +1,10 @@
-import { cn } from "@/lib/utils"
 import * as VolumeSlider from "@/components/limeplay/volume-control"
 
 export function HorizontalVolumeSliderControl() {
   return (
-    <VolumeSliderControlRoot
-      className="
-        media-hit-area-volume-horizontal relative h-1 w-14 opacity-100
-        @3xl/root:hidden
-      "
-      orientation="horizontal"
-    />
-  )
-}
-
-export function VerticalVolumeSliderControl() {
-  return (
-    <VolumeSliderControlRoot
-      className="
-        media-hit-area-volume-vertical absolute bottom-full left-1/2 mb-2 hidden h-16 w-1 -translate-x-1/2 pb-1 opacity-0
-        @3xl/root:flex
-        @3xl/root:group-focus-within:opacity-100
-        @3xl/root:group-hover:opacity-100
-      "
-      orientation="vertical"
-    />
-  )
-}
-
-function VolumeSliderControlRoot({
-  className,
-  orientation,
-}: {
-  className?: string
-  orientation: "horizontal" | "vertical"
-}) {
-  return (
     <VolumeSlider.Root
-      className={cn(
-        `media-hit-area z-10 cursor-crosshair rounded-md transition-opacity duration-300 ease-in-out`,
-        className
-      )}
-      orientation={orientation}
+      className="media-hit-area media-hit-area-volume-horizontal relative z-10 h-1 w-14 cursor-crosshair rounded-md"
+      orientation="horizontal"
     >
       <VolumeSlider.Track>
         <VolumeSlider.Progress />

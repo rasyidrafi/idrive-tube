@@ -34,4 +34,34 @@ describe("video player layout", () => {
       "pointer-events-none absolute inset-0 isolate z-20 flex flex-col",
     );
   });
+
+  it("uses a standard inline horizontal volume control at every size", async () => {
+    const [bottomControls, group, slider] = await Promise.all([
+      readFile(
+        "src/components/video-player/components/bottom-controls.tsx",
+        "utf8",
+      ),
+      readFile(
+        "src/components/video-player/components/volume-group-control.tsx",
+        "utf8",
+      ),
+      readFile(
+        "src/components/video-player/components/volume-slider-control.tsx",
+        "utf8",
+      ),
+    ]);
+
+    expect(group).toContain("<HorizontalVolumeSliderControl />");
+    expect(group).not.toContain("VerticalVolumeSliderControl");
+    expect(group).not.toContain("flex-col-reverse");
+    expect(slider).toContain('orientation="horizontal"');
+    expect(slider).not.toContain('orientation="vertical"');
+    expect(slider).not.toContain("@3xl/root:hidden");
+    expect(bottomControls).toContain(
+      "@3xl/root:grid-cols-[auto_minmax(0,1fr)_auto]",
+    );
+    expect(bottomControls).not.toContain(
+      "@3xl/root:grid-cols-[1fr_3fr_1fr]",
+    );
+  });
 });

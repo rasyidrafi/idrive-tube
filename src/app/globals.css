@@ -238,4 +238,3 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 .media-hit-area-timeline { --media-hit-bottom: -14px; --media-hit-left: -2px; --media-hit-right: -2px; --media-hit-top: -14px; }
 .media-hit-area-volume-horizontal { --media-hit-bottom: -2px; --media-hit-left: -12px; --media-hit-right: -12px; --media-hit-top: -2px; }
-.media-hit-area-volume-vertical { --media-hit-bottom: -12px; --media-hit-left: -8px; --media-hit-right: -8px; --media-hit-top: -12px; }
