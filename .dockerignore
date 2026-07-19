@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+coverage
+.env
+docker-compose.override.yml
+nginx/local-default.conf
+npm-debug.log*
+*.tsbuildinfo
+**/*.test.ts
+**/*.test.tsx
+test
+AGENTS.md
+CLAUDE.md
+README.md

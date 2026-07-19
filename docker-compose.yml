@@ -1,0 +1,105 @@
+name: idrive-tube
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgres://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB must be set}
+  REDIS_URL: redis://redis:6379
+  SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL must be set}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
+  MEDIA_ROOT: /data/media
+  HLS_ROOT: /data/hls
+  THUMBNAIL_ROOT: /data/thumbnails
+  IDRIVE_VIDEO_FOLDER: ${IDRIVE_VIDEO_FOLDER:-/personal}
+  CATALOG_SYNC_INTERVAL_SECONDS: ${CATALOG_SYNC_INTERVAL_SECONDS:-300}
+  HLS_CACHE_MAX_BYTES: ${HLS_CACHE_MAX_BYTES:-53687091200}
+
+x-app-volumes: &app-volumes
+  - media-cache:/data/media
+  - hls:/data/hls
+  - thumbnails:/data/thumbnails
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER must be set} -d ${POSTGRES_DB:?POSTGRES_DB must be set}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build: .
+    image: idrive-tube-app:latest
+    restart: unless-stopped
+    command: ["sh", "-c", "npm run db:bootstrap && npm start"]
+    environment: *app-environment
+    volumes: *app-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  worker:
+    build: .
+    image: idrive-tube-app:latest
+    restart: unless-stopped
+    command: ["npm", "run", "worker"]
+    environment:
+      <<: *app-environment
+      IDRIVE_CLI_CONFIG_DIR: /root/.config/idrive-cli
+      IDRIVE_CLI_DATA_DIR: /root/.local/share/idrive-cli
+    volumes:
+      - media-cache:/data/media
+      - hls:/data/hls
+      - thumbnails:/data/thumbnails
+      - ${HOME}/.config/idrive-cli:/root/.config/idrive-cli:ro
+      - ${HOME}/.local/share/idrive-cli:/root/.local/share/idrive-cli
+    depends_on:
+      web:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - hls:/data/hls:ro
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:
+  media-cache:
+  hls:
+  thumbnails:
