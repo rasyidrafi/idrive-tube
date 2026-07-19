@@ -17,8 +17,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link className={buttonVariants({ variant: "ghost" })} href="/#library"><Library /> Library</Link>
         </nav>
         <div className="user-cluster">
-          <ThemeToggle />
           <Suspense fallback={<UserMenuSkeleton />}><UserMenu /></Suspense>
+          <ThemeToggle />
         </div>
       </header>
       <main className="content-shell">{children}</main>

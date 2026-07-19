@@ -38,4 +38,13 @@ describe("Next.js rendering contract", () => {
     expect(volume).toContain("onValueChange={handleValueChange}");
     expect(theme).toContain("DropdownMenuRadioGroup");
   });
+
+  it("places the theme switcher after the user logout action", async () => {
+    const shell = await readFile("src/components/app-shell.tsx", "utf8");
+    const userMenuPosition = shell.indexOf("<UserMenu />");
+    const themeTogglePosition = shell.indexOf("<ThemeToggle />");
+
+    expect(userMenuPosition).toBeGreaterThan(-1);
+    expect(themeTogglePosition).toBeGreaterThan(userMenuPosition);
+  });
 });
