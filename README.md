@@ -5,15 +5,16 @@ uses Next.js, shadcn/ui, PostgreSQL, BullMQ, FFmpeg, Nginx, and Docker Compose.
 The watch experience uses the editable Limeplay shadcn block with Shaka Player.
 
 The browser never uploads or accesses IDrive directly. A backend worker lists
-video files in an environment-configured IDrive folder, downloads a selected
-file into a temporary cache, packages it as HLS, and deletes the downloaded
-original. Nginx serves the resulting HLS only after Next.js authorizes the
-viewer.
+video files through the unofficial [`idrive-sdk`](https://www.npmjs.com/package/idrive-sdk),
+downloads a selected file into a temporary cache, packages it as HLS, and
+deletes the downloaded original. Nginx serves the resulting HLS only after
+Next.js authorizes the viewer.
 
 ## Start
 
-The host must already have a working `idrive-cli` login. Its configuration and
-official transfer engine are mounted into the worker container.
+The host must already have a working [`idrive-cli`](https://www.npmjs.com/package/idrive-cli)
+login. Its configuration and official transfer engine are mounted into the
+worker container; the application itself depends directly on `idrive-sdk`.
 The worker copies the mounted profile into a private root-owned file at startup
 so the SDK's profile ownership checks remain enforced inside the container.
 The transfer engine is mounted read-only and temporary operation workspaces stay

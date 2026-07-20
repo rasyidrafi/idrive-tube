@@ -1,11 +1,8 @@
 import {
-  CloudDriveClient,
-  ConfigStore,
+  createCloudDriveClient,
   defaultLocations,
-  EngineRunner,
-  IdDriveAuthClient,
-  ProcessRunner,
-} from "idrive-cli";
+  type CloudDriveClient,
+} from "idrive-sdk";
 
 import type { IDriveEntry } from "@/lib/idrive";
 
@@ -59,16 +56,8 @@ let sharedClient: IDriveClient | undefined;
 
 function defaultClient(): IDriveClient {
   if (sharedClient) return sharedClient;
-  const locations = idriveLocations();
-  const runner = new ProcessRunner();
-  const client = new CloudDriveClient(
-    new IdDriveAuthClient(),
-    new ConfigStore(locations.configFile),
-    new EngineRunner(runner, locations),
-    locations,
-  );
-  sharedClient = client;
-  return client;
+  sharedClient = createCloudDriveClient({ locations: idriveLocations() });
+  return sharedClient;
 }
 
 function operationOptions(options: IDriveOperationOptions, defaultTimeoutMs: number) {
