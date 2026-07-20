@@ -1,11 +1,10 @@
 import path from "node:path";
-import { spawn } from "node:child_process";
 
 export interface IDriveEntry {
   modifiedAt?: string;
   name: string;
   size?: number;
-  type: "file" | "directory";
+  type: "directory" | "file";
 }
 
 export interface CatalogVideoEntry {
@@ -46,23 +45,4 @@ export function normalizeRemoteDirectory(directory: string): string {
 export function remoteDirectoryPrefix(directory: string): string {
   const normalized = normalizeRemoteDirectory(directory);
   return normalized === "/" ? "/" : `${normalized}/`;
-}
-
-export async function runIdrive(args: string[], timeoutMs = 30 * 60 * 1000): Promise<string> {
-  const executable = path.join(process.cwd(), "node_modules", ".bin", "idrive-cli");
-  return new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-    let timedOut = false;
-    const timer = setTimeout(() => { timedOut = true; child.kill("SIGTERM"); }, timeoutMs);
-    child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
-    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolve(stdout);
-      else reject(new Error(`idrive-cli ${timedOut ? "timed out" : `exited with ${code}`}: ${(stderr || stdout).trim()}`));
-    });
-  });
 }

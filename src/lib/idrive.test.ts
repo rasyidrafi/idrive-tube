@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeRemoteDirectory, remoteDirectoryPrefix, remoteFilePath, videoEntries, type IDriveEntry } from "@/lib/idrive";
+import {
+  normalizeRemoteDirectory,
+  remoteDirectoryPrefix,
+  remoteFilePath,
+  videoEntries,
+  type IDriveEntry,
+} from "@/lib/idrive";
 
 describe("IDrive catalog", () => {
   it("keeps supported video files only", () => {
@@ -28,4 +34,5 @@ describe("IDrive catalog", () => {
     expect(remoteDirectoryPrefix("personal")).toBe("/personal/");
     expect(remoteDirectoryPrefix("/")).toBe("/");
   });
+
 });

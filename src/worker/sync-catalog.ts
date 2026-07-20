@@ -3,7 +3,8 @@ import { rm } from "node:fs/promises";
 
 import { query } from "@/lib/db";
 import { env } from "@/lib/env";
-import { normalizeRemoteDirectory, remoteDirectoryPrefix, remoteFilePath, runIdrive, videoEntries, type IDriveEntry } from "@/lib/idrive";
+import { listIdrive } from "@/lib/idrive-client";
+import { normalizeRemoteDirectory, remoteDirectoryPrefix, remoteFilePath, videoEntries } from "@/lib/idrive";
 
 interface AdminRow { id: string }
 interface ExistingRow {
@@ -14,15 +15,17 @@ interface ExistingRow {
 }
 interface RemovedRow { id: string }
 
-export async function syncCatalog(): Promise<number> {
+export async function syncCatalog(signal?: AbortSignal): Promise<number> {
   const folder = normalizeRemoteDirectory(env().IDRIVE_VIDEO_FOLDER);
-  const entries = videoEntries(JSON.parse(await runIdrive(["ls", folder, "--json"])) as IDriveEntry[]);
+  const entries = videoEntries(await listIdrive(folder, signal ? { signal } : {}));
+  signal?.throwIfAborted();
   const admins = await query<AdminRow>(`select id from users where role = 'admin' order by created_at limit 1`);
   const ownerId = admins[0]?.id;
   if (!ownerId) throw new Error("Catalog sync requires a bootstrap administrator");
   const scanStartedAt = new Date();
 
   for (const entry of entries) {
+    signal?.throwIfAborted();
     const remotePath = remoteFilePath(folder, entry.name);
     const title = path.basename(entry.name, path.extname(entry.name)).replace(/[-_]+/g, " ").trim() || entry.name;
     const existing = (await query<ExistingRow>(
@@ -58,14 +61,19 @@ export async function syncCatalog(): Promise<number> {
     }
   }
 
+  signal?.throwIfAborted();
   const removed = await query<RemovedRow>(
     `select id from videos where remote_path is not null and
       (left(remote_path, length($1)) <> $1 or last_seen_at is null or last_seen_at < $2)
      order by id`,
     [remoteDirectoryPrefix(folder), scanStartedAt],
   );
-  for (const video of removed) await removeCachedMedia(video.id);
+  for (const video of removed) {
+    signal?.throwIfAborted();
+    await removeCachedMedia(video.id);
+  }
   if (removed.length > 0) {
+    signal?.throwIfAborted();
     await query(`delete from videos where id = any($1::uuid[])`, [removed.map((video) => video.id)]);
   }
   return entries.length;

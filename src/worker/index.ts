@@ -1,22 +1,27 @@
 import { Worker } from "bullmq";
 
+import { assertIdriveReady } from "@/lib/idrive-client";
 import { CATALOG_SYNC_JOB, VIDEO_JOB, VIDEO_QUEUE, redisConnection, videoQueue } from "@/lib/queue";
 import { evictCache } from "@/worker/cache-eviction";
+import { WorkerLifecycle } from "@/worker/lifecycle";
 import { processVideo } from "@/worker/process-video";
 import { syncCatalog } from "@/worker/sync-catalog";
 import { clearDirectoryContents } from "@/worker/startup";
 
-let worker: Worker | null = null;
+let lifecycle: WorkerLifecycle | null = null;
+const workerController = new AbortController();
 
 async function main() {
+  await assertIdriveReady();
+  console.log("IDrive worker profile and transfer engine verified");
   const mediaRoot = process.env.MEDIA_ROOT ?? "/data/media";
   await clearDirectoryContents(mediaRoot);
 
-  worker = new Worker(
+  const worker = new Worker(
     VIDEO_QUEUE,
     async (job) => {
       if (job.name === CATALOG_SYNC_JOB) {
-        const count = await syncCatalog();
+        const count = await syncCatalog(workerController.signal);
         await evictCache();
         console.log(`Catalog sync found ${count} video files`);
         return;
@@ -25,20 +30,24 @@ async function main() {
         throw new Error("Invalid worker job");
       }
       console.log(`Processing video ${job.data.videoId}, attempt ${job.attemptsMade + 1}`);
-      await processVideo(job.data.videoId);
+      await processVideo(job.data.videoId, { signal: workerController.signal });
       await evictCache();
     },
     { connection: redisConnection(), concurrency: 1 },
   );
 
+  lifecycle = new WorkerLifecycle(worker, clearInterval, workerController);
+  lifecycle.attachErrorLogging();
   worker.on("completed", (job) => console.log(`Completed job ${job.name}`));
   worker.on("failed", (job, error) => console.error(`Failed job ${job?.name}: ${error.message}`));
 
   await scheduleCatalogSync();
-  setInterval(
+  const catalogInterval = setInterval(
     () => void scheduleCatalogSync(),
     Number(process.env.CATALOG_SYNC_INTERVAL_SECONDS ?? 300) * 1000,
-  ).unref();
+  );
+  catalogInterval.unref();
+  lifecycle.setCatalogInterval(catalogInterval);
 }
 
 async function scheduleCatalogSync() {
@@ -57,7 +66,7 @@ async function scheduleCatalogSync() {
 
 async function shutdown(signal: string) {
   console.log(`Received ${signal}; closing worker`);
-  await worker?.close();
+  await lifecycle?.shutdown(signal);
   process.exit(0);
 }
 

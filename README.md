@@ -14,6 +14,13 @@ viewer.
 
 The host must already have a working `idrive-cli` login. Its configuration and
 official transfer engine are mounted into the worker container.
+The worker copies the mounted profile into a private root-owned file at startup
+so the SDK's profile ownership checks remain enforced inside the container.
+The transfer engine is mounted read-only and temporary operation workspaces stay
+inside the container rather than modifying the host's CLI data directory.
+Before consuming jobs, the worker verifies both the staged profile and transfer
+engine integrity. Container shutdown cancels active IDrive and FFmpeg processes
+before BullMQ closes, with a 30-second Compose grace period for cleanup.
 
 ```bash
 cp .env.example .env
@@ -39,7 +46,7 @@ evicted automatically when the cache exceeds this budget.
 
 ## Streaming flow
 
-1. The worker periodically runs `idrive-cli ls <folder> --json`.
+1. The worker uses the typed IDrive client API to list the configured folder.
 2. Supported MP4, M4V, MOV, MKV, and WebM files appear in the library.
 3. Opening an uncached video queues private background preparation.
 4. The worker downloads the complete original from IDrive.

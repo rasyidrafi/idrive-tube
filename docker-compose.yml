@@ -70,17 +70,19 @@ services:
     build: .
     image: idrive-tube-app:latest
     restart: unless-stopped
-    command: ["npm", "run", "worker"]
+    stop_grace_period: 30s
+    command: ["sh", "-c", "install -d -m 700 /root/.config/idrive-cli && install -m 600 /idrive-host-config/config.json /root/.config/idrive-cli/config.json && exec npm run worker"]
     environment:
       <<: *app-environment
       IDRIVE_CLI_CONFIG_DIR: /root/.config/idrive-cli
       IDRIVE_CLI_DATA_DIR: /root/.local/share/idrive-cli
+      IDRIVE_WORKER_TEMP_DIR: /tmp/idrive-cli
     volumes:
       - media-cache:/data/media
       - hls:/data/hls
       - thumbnails:/data/thumbnails
-      - ${HOME}/.config/idrive-cli:/root/.config/idrive-cli:ro
-      - ${HOME}/.local/share/idrive-cli:/root/.local/share/idrive-cli
+      - ${HOME}/.config/idrive-cli:/idrive-host-config:ro
+      - ${HOME}/.local/share/idrive-cli:/root/.local/share/idrive-cli:ro
     depends_on:
       web:
         condition: service_healthy
